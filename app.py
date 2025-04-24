@@ -5,16 +5,14 @@ from docx import Document
 from datetime import datetime
 
 # Function to create and export Word document
-def to_word(filtered, officer, status, progress):
+def to_word(filtered, officer):
     doc = Document()
-    doc.add_heading('Mwanza District Irrigation Task Report', 0)
+    doc.add_heading('Mwanza District Irrigation Task Report 🌱📋', 0)
 
-    doc.add_paragraph(f"Responsible Officer: {officer}")
-    doc.add_paragraph(f"Status: {status}")
-    doc.add_paragraph(f"Progress: {progress}")
-    doc.add_paragraph(f"Date: {datetime.now().strftime('%Y-%m-%d')}")
+    doc.add_paragraph(f"🧑‍💼 Responsible Officer: {officer}")
+    doc.add_paragraph(f"📅 Date: {datetime.now().strftime('%Y-%m-%d')}")
 
-    doc.add_heading('Tasks:', level=1)
+    doc.add_heading('📝 Task Details:', level=1)
     table = doc.add_table(rows=1, cols=len(filtered.columns))
 
     # Adding headers
@@ -35,39 +33,61 @@ def to_word(filtered, officer, status, progress):
 # Streamlit interface
 def main():
     st.set_page_config(page_title="Mwanza Irrigation Tracker", page_icon="🌾", layout="wide")
-    
-    # Title with Emoji and Styling
-    st.markdown(
-        """
-        <h1 style="color:#4CAF50; font-size:40px; text-align:center;">Mwanza District Irrigation Tracker 🌿</h1>
-        <p style="font-size:20px; text-align:center;">Track irrigation tasks and download task reports in Word format.</p>
-        """, unsafe_allow_html=True)
+    st.markdown("""
+        <h1 style="color:#4CAF50; font-size:40px; text-align:center;">🌾 Mwanza District Irrigation Tracker 🌦️</h1>
+        <p style="font-size:18px; text-align:center;">📌 Track field and office tasks 🛠️ with responsible officers, descriptions, and remarks. Export monthly reports in Word format. 📤</p>
+    """, unsafe_allow_html=True)
 
-    # Data (Replace with your actual data loading process)
-    data = {
-        'Task': ['Irrigation Setup', 'Field Inspection', 'Maintenance'],
-        'Deadline': ['2025-05-01', '2025-05-15', '2025-06-01'],
-        'Status': ['In Progress', 'Completed', 'Pending'],
-        'Progress': ['50%', '100%', '20%']
-    }
+    # Initial task data
+    if 'tasks' not in st.session_state:
+        st.session_state.tasks = pd.DataFrame(columns=[
+            '📌 Task', '📝 Work Description', '📆 Deadline', '📊 Status', '🚧 Progress', 
+            '🏢 Office Work', '💬 Remarks'
+        ])
 
-    df = pd.DataFrame(data)
+    st.subheader("➕ Add New Task")
+    with st.form("task_form", clear_on_submit=True):
+        task = st.text_input("📌 Task")
+        description = st.text_input("📝 Work Description")
+        deadline = st.date_input("📆 Deadline")
+        status = st.selectbox("📊 Status", ["In Progress 🚧", "Completed ✅", "Pending ⏳"])
+        progress = st.text_input("🚧 Progress (e.g., 50%)")
+        office_work = st.text_input("🏢 Office Work")
+        remarks = st.text_input("💬 Remarks")
+        submitted = st.form_submit_button("📥 Add Task")
 
-    # Show the data in the app with editable fields
-    st.write("### Irrigation Tasks List 📅")
-    st.write(df)
+        if submitted and task:
+            new_row = pd.DataFrame.from_dict([{
+                '📌 Task': task,
+                '📝 Work Description': description,
+                '📆 Deadline': deadline.strftime('%Y-%m-%d'),
+                '📊 Status': status,
+                '🚧 Progress': progress,
+                '🏢 Office Work': office_work,
+                '💬 Remarks': remarks
+            }])
+            st.session_state.tasks = pd.concat([st.session_state.tasks, new_row], ignore_index=True)
 
-    # Editable fields for the report
-    officer = st.text_input("Responsible Officer", "")
-    status = st.selectbox("Status", ["In Progress", "Completed", "Pending"])
-    progress = st.text_input("Progress", "")
+    st.subheader("📋 Current Tasks")
+    edited_df = st.data_editor(st.session_state.tasks, num_rows="dynamic")
+    st.session_state.tasks = edited_df
 
-    # Apply filters for monthly report generation (optional)
-    st.write("### Filter Tasks by Month 🔍")
-    month_filter = st.date_input("Select the month:", datetime.today())
-    filtered_df = df[df['Deadline'].str.contains(month_filter.strftime("%Y-%m"))]
+    officer = st.text_input("🧑‍💼 Responsible Officer")
+    selected_month = st.date_input("📅 Select Month", datetime.today())
+    month_str = selected_month.strftime("%Y-%m")
+    filtered_df = st.session_state.tasks[st.session_state.tasks['📆 Deadline'].str.startswith(month_str)]
 
-    st.write(f"Filtered tasks for {month_filter.strftime('%B %Y')}:")
-    st.write(filtered_df)
+    st.write(f"📅 Filtered tasks for {selected_month.strftime('%B %Y')}:")
+    st.dataframe(filtered_df)
 
-    # Add a
+    if st.button('📥 Download Word Report'):
+        word_data = to_word(filtered_df, officer)
+        st.download_button(
+            label="📄 Download Word Document",
+            data=word_data,
+            file_name=f'mwanza_irrigation_report_{month_str}.docx',
+            mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+
+if __name__ == '__main__':
+    main()
