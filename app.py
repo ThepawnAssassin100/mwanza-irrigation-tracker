@@ -72,9 +72,15 @@ with st.expander("📊 Weekly Summary"):
 # Excel Export
 def to_excel(df):
     output = BytesIO()
+import pandas as pd
+
+def to_excel(filtered):
+    output = BytesIO()  # assuming you are using BytesIO or some output stream
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.drop(columns=["Image"]).to_excel(writer, index=False, sheet_name='WeeklyTasks')
-        writer.save()
+        filtered.to_excel(writer, index=False, sheet_name='Sheet1')
+        # No need for writer.save() because the context manager handles it automatically
+    return output.getvalue()  # returning the Excel file content if needed
+
     processed_data = output.getvalue()
     return processed_data
 
